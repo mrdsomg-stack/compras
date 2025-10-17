@@ -1,55 +1,56 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Controle de Compras do Mês 🛒</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f4f4f4;
+      background-color: #f6f7fb;
       margin: 0;
       padding: 20px;
     }
+    h1 {
+      color: #222;
+      text-align: center;
+    }
     .container {
       max-width: 900px;
-      margin: auto;
+      margin: 0 auto;
       background: white;
-      padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
-    h1 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 20px;
+    label {
+      font-weight: bold;
     }
-    select, input, button {
-      padding: 8px;
+    input, select, button {
       margin: 5px 0;
-      width: 100%;
-      box-sizing: border-box;
-      font-size: 14px;
+      padding: 8px;
+      font-size: 15px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
     }
     button {
-      background: #009879;
+      background-color: #009879;
       color: white;
       border: none;
-      border-radius: 5px;
       cursor: pointer;
-      transition: 0.2s;
     }
-    button:hover { background: #007f67; }
+    button:hover {
+      background-color: #007a62;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 15px;
     }
     th, td {
       border: 1px solid #ccc;
       padding: 10px;
-      text-align: center;
+      text-align: left;
     }
     th {
       background: #009879;
@@ -57,18 +58,14 @@
     }
     tfoot td {
       font-weight: bold;
-      background: #e9f5f2;
+      background: #f3f3f3;
     }
-    .actions button {
-      margin: 0 2px;
-      padding: 5px 10px;
-      font-size: 12px;
+    .acoes button {
+      background-color: #d9534f;
+      margin: 0 5px;
     }
-    .btn-pdf {
-      background: #e03e3e;
-    }
-    .btn-pdf:hover {
-      background: #b82e2e;
+    .acoes button:hover {
+      background-color: #c9302c;
     }
   </style>
 </head>
@@ -76,30 +73,32 @@
   <div class="container">
     <h1>Controle de Compras do Mês 🛒</h1>
 
-    <!-- Formulário -->
-    <div>
-      <label for="produto">Produto:</label>
-      <select id="produto">
-        <option value="">Selecione...</option>
-      </select>
+    <label for="produto">Produto:</label>
+    <select id="produto">
+      <option value="">Selecione...</option>
+      <option>Arroz 5kg</option>
+      <option>Feijão 1kg</option>
+      <option>Macarrão 500g</option>
+      <option>Açúcar 1kg</option>
+      <option>Óleo 900ml</option>
+      <option>Leite 1L</option>
+    </select>
 
-      <label for="quantidade">Quantidade:</label>
-      <input type="number" id="quantidade" min="1" value="1">
+    <label for="quantidade">Qtd:</label>
+    <input type="number" id="quantidade" min="1" value="1" />
 
-      <label for="valor">Valor Unitário (R$):</label>
-      <input type="number" id="valor" step="0.01" min="0" value="0">
+    <label for="valor">Valor (R$):</label>
+    <input type="number" id="valor" min="0" step="0.01" />
 
-      <button onclick="adicionarItem()">Adicionar Produto</button>
+    <button onclick="adicionarItem()">Adicionar</button>
 
-      <hr style="margin: 20px 0;">
+    <br><br>
 
-      <label for="novoProduto">Cadastrar novo produto:</label>
-      <input type="text" id="novoProduto" placeholder="Digite o nome do novo produto">
-      <button onclick="adicionarProduto()">+ Adicionar à lista</button>
-    </div>
+    <label for="novoProduto">Adicionar novo produto:</label>
+    <input type="text" id="novoProduto" placeholder="Ex: Café 500g" />
+    <button onclick="adicionarProduto()">+ Produto</button>
 
-    <!-- Tabela -->
-    <table id="tabela">
+    <table id="tabelaCompras">
       <thead>
         <tr>
           <th>Produto</th>
@@ -109,88 +108,112 @@
           <th>Ações</th>
         </tr>
       </thead>
-      <tbody id="lista"></tbody>
+      <tbody id="lista-compras"></tbody>
       <tfoot>
         <tr>
-          <td colspan="3">Total da Compra</td>
-          <td id="totalGeral">0.00</td>
+          <td colspan="3">Total Geral</td>
+          <td id="total-geral">0.00</td>
           <td></td>
         </tr>
       </tfoot>
     </table>
 
-    <button class="btn-pdf" onclick="gerarPDF()">📄 Baixar Relatório em PDF</button>
+    <br>
+    <button onclick="gerarPDF()">📄 Baixar Relatório em PDF</button>
   </div>
 
+  <!-- Biblioteca jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <script>
-    const lista = document.getElementById("lista");
-    const totalGeralEl = document.getElementById("totalGeral");
-    const selectProduto = document.getElementById("produto");
+    // ---------- Carregamento inicial ----------
+    window.onload = () => {
+      carregarProdutosLocalStorage();
+      carregarComprasLocalStorage();
+    };
 
-    // === Inicializar Produtos Padrão ===
-    const produtosPadrao = ["Arroz 5kg", "Feijão 1kg", "Macarrão 500g", "Açúcar 1kg", "Óleo 900ml", "Leite 1L"];
-
-    // === Carregar Produtos Salvos ou Padrão ===
-    function carregarProdutos() {
-      const produtosSalvos = JSON.parse(localStorage.getItem("produtos")) || produtosPadrao;
-      selectProduto.innerHTML = '<option value="">Selecione...</option>';
-      produtosSalvos.forEach(p => {
-        const opt = document.createElement("option");
-        opt.text = p;
-        selectProduto.add(opt);
-      });
-    }
-
-    // === Salvar Produtos ===
-    function salvarProdutos() {
-      const opcoes = Array.from(selectProduto.options).map(o => o.text).filter(o => o !== "Selecione...");
-      localStorage.setItem("produtos", JSON.stringify(opcoes));
-    }
-
-    // === Adicionar Novo Produto ===
+    // ---------- Adicionar novo produto ----------
     function adicionarProduto() {
       const novoProduto = document.getElementById("novoProduto").value.trim();
-      if (!novoProduto) {
+      const select = document.getElementById("produto");
+
+      if (novoProduto === "") {
         alert("Digite o nome do produto!");
         return;
       }
 
-      const opt = document.createElement("option");
-      opt.text = novoProduto;
-      selectProduto.add(opt);
-      salvarProdutos();
+      // Verifica duplicados
+      for (let i = 0; i < select.options.length; i++) {
+        if (select.options[i].text.toLowerCase() === novoProduto.toLowerCase()) {
+          alert("Este produto já existe!");
+          return;
+        }
+      }
+
+      const option = document.createElement("option");
+      option.text = novoProduto;
+      select.add(option);
+
+      ordenarProdutos(select);
+      salvarProdutosLocalStorage();
+
       document.getElementById("novoProduto").value = "";
-      alert(`Produto "${novoProduto}" adicionado à lista!`);
+      alert(`Produto "${novoProduto}" adicionado!`);
     }
 
-    // === Adicionar Item à Tabela ===
+    function ordenarProdutos(select) {
+      const options = Array.from(select.options).slice(1);
+      options.sort((a, b) => a.text.localeCompare(b.text, "pt-BR"));
+      select.length = 1;
+      options.forEach(opt => select.add(opt));
+    }
+
+    function salvarProdutosLocalStorage() {
+      const produtos = Array.from(document.getElementById("produto").options)
+        .slice(1)
+        .map(o => o.text);
+      localStorage.setItem("produtos", JSON.stringify(produtos));
+    }
+
+    function carregarProdutosLocalStorage() {
+      const produtos = JSON.parse(localStorage.getItem("produtos")) || [];
+      const select = document.getElementById("produto");
+      produtos.sort((a, b) => a.localeCompare(b, "pt-BR"));
+      produtos.forEach(p => {
+        const opt = document.createElement("option");
+        opt.text = p;
+        select.add(opt);
+      });
+    }
+
+    // ---------- Adicionar item ----------
     function adicionarItem() {
-      const produto = selectProduto.value;
-      const quantidade = parseFloat(document.getElementById("quantidade").value);
+      const produto = document.getElementById("produto").value;
+      const qtd = parseFloat(document.getElementById("quantidade").value);
       const valor = parseFloat(document.getElementById("valor").value);
 
-      if (!produto || quantidade <= 0 || valor < 0) {
+      if (!produto || isNaN(qtd) || isNaN(valor)) {
         alert("Preencha todos os campos corretamente!");
         return;
       }
 
-      const total = quantidade * valor;
+      const lista = document.getElementById("lista-compras");
       const linha = document.createElement("tr");
 
+      const total = qtd * valor;
       linha.innerHTML = `
-        <td contenteditable="true" oninput="salvarTabela()">${produto}</td>
-        <td contenteditable="true" oninput="atualizarTotalLinha(this)">${quantidade}</td>
+        <td contenteditable="true" oninput="salvarComprasLocalStorage()">${produto}</td>
+        <td contenteditable="true" oninput="atualizarTotalLinha(this)">${qtd}</td>
         <td contenteditable="true" oninput="atualizarTotalLinha(this)">${valor.toFixed(2)}</td>
         <td>${total.toFixed(2)}</td>
-        <td><button onclick="removerItem(this)">🗑️</button></td>
+        <td class="acoes"><button onclick="removerLinha(this)">Remover</button></td>
       `;
 
       lista.appendChild(linha);
       atualizarTotalGeral();
-      salvarTabela();
+      salvarComprasLocalStorage();
     }
 
-    // === Atualizar Totais ===
     function atualizarTotalLinha(el) {
       const linha = el.parentElement;
       const qtd = parseFloat(linha.children[1].textContent) || 0;
@@ -198,90 +221,82 @@
       const total = qtd * valor;
       linha.children[3].textContent = total.toFixed(2);
       atualizarTotalGeral();
-      salvarTabela();
+      salvarComprasLocalStorage();
     }
 
     function atualizarTotalGeral() {
+      const linhas = document.querySelectorAll("#lista-compras tr");
       let total = 0;
-      document.querySelectorAll("#lista tr").forEach(linha => {
-        total += parseFloat(linha.children[3].textContent) || 0;
-      });
-      totalGeralEl.textContent = total.toFixed(2);
+      linhas.forEach(l => total += parseFloat(l.children[3].textContent) || 0);
+      document.getElementById("total-geral").textContent = total.toFixed(2);
     }
 
-    // === Remover Item ===
-    function removerItem(botao) {
+    function removerLinha(botao) {
       botao.parentElement.parentElement.remove();
       atualizarTotalGeral();
-      salvarTabela();
+      salvarComprasLocalStorage();
     }
 
-    // === Salvar e Carregar Tabela ===
-    function salvarTabela() {
-      const itens = [];
-      document.querySelectorAll("#lista tr").forEach(linha => {
-        itens.push({
-          produto: linha.children[0].textContent,
-          quantidade: linha.children[1].textContent,
-          valor: linha.children[2].textContent,
-          total: linha.children[3].textContent
-        });
-      });
-      localStorage.setItem("compras", JSON.stringify(itens));
+    // ---------- Local Storage ----------
+    function salvarComprasLocalStorage() {
+      const linhas = document.querySelectorAll("#lista-compras tr");
+      const compras = Array.from(linhas).map(l => ({
+        produto: l.children[0].textContent,
+        qtd: l.children[1].textContent,
+        valor: l.children[2].textContent
+      }));
+      localStorage.setItem("compras", JSON.stringify(compras));
     }
 
-    function carregarTabela() {
-      const itens = JSON.parse(localStorage.getItem("compras")) || [];
-      itens.forEach(item => {
+    function carregarComprasLocalStorage() {
+      const compras = JSON.parse(localStorage.getItem("compras")) || [];
+      const lista = document.getElementById("lista-compras");
+      compras.forEach(item => {
         const linha = document.createElement("tr");
+        const total = parseFloat(item.qtd) * parseFloat(item.valor);
         linha.innerHTML = `
-          <td contenteditable="true" oninput="salvarTabela()">${item.produto}</td>
-          <td contenteditable="true" oninput="atualizarTotalLinha(this)">${item.quantidade}</td>
+          <td contenteditable="true" oninput="salvarComprasLocalStorage()">${item.produto}</td>
+          <td contenteditable="true" oninput="atualizarTotalLinha(this)">${item.qtd}</td>
           <td contenteditable="true" oninput="atualizarTotalLinha(this)">${item.valor}</td>
-          <td>${item.total}</td>
-          <td><button onclick="removerItem(this)">🗑️</button></td>
+          <td>${total.toFixed(2)}</td>
+          <td class="acoes"><button onclick="removerLinha(this)">Remover</button></td>
         `;
         lista.appendChild(linha);
       });
       atualizarTotalGeral();
     }
 
-    // === Gerar PDF ===
+    // ---------- Gerar PDF ----------
     async function gerarPDF() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
-      doc.setFontSize(16);
-      doc.text("Relatório de Compras do Mês", 20, 20);
-      doc.setFontSize(12);
+      doc.setFontSize(14);
+      doc.text("Relatório de Compras do Mês", 10, 10);
 
-      let y = 35;
-      doc.text("Produto", 20, y);
-      doc.text("Qtd", 90, y);
-      doc.text("Valor (R$)", 120, y);
-      doc.text("Total (R$)", 160, y);
-      y += 10;
+      const linhas = document.querySelectorAll("#lista-compras tr");
+      let y = 25;
+      doc.text("Produto", 10, 20);
+      doc.text("Qtd", 80, 20);
+      doc.text("Valor (R$)", 110, 20);
+      doc.text("Total (R$)", 150, 20);
 
-      document.querySelectorAll("#lista tr").forEach(linha => {
-        const [produto, qtd, valor, total] = Array.from(linha.children).map(td => td.textContent);
-        doc.text(produto, 20, y);
-        doc.text(qtd, 95, y);
-        doc.text(valor, 125, y);
-        doc.text(total, 165, y);
+      linhas.forEach(linha => {
+        const produto = linha.children[0].textContent;
+        const qtd = linha.children[1].textContent;
+        const valor = linha.children[2].textContent;
+        const total = linha.children[3].textContent;
+
+        doc.text(produto, 10, y);
+        doc.text(qtd, 80, y);
+        doc.text(valor, 110, y);
+        doc.text(total, 150, y);
         y += 8;
       });
 
-      y += 5;
-      doc.setFontSize(14);
-      doc.text(`Total Geral: R$ ${totalGeralEl.textContent}`, 20, y);
+      doc.text(`Total Geral: R$ ${document.getElementById("total-geral").textContent}`, 10, y + 10);
 
-      doc.save("relatorio-compras.pdf");
-    }
-
-    // === Inicializar Página ===
-    window.onload = function() {
-      carregarProdutos();
-      carregarTabela();
+      doc.save("relatorio_compras.pdf");
     }
   </script>
 </body>
