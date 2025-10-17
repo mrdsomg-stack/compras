@@ -3,301 +3,203 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Controle de Compras do Mês 🛒</title>
+  <title>Controle de Compras</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f6f7fb;
-      margin: 0;
-      padding: 20px;
+      margin: 30px;
+      background: #f5f5f5;
     }
     h1 {
-      color: #222;
       text-align: center;
+      color: #333;
     }
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    .form-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
     }
-    label {
-      font-weight: bold;
-    }
-    input, select, button {
-      margin: 5px 0;
+    select, input, button {
       padding: 8px;
-      font-size: 15px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background-color: #009879;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #007a62;
+      font-size: 16px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
+      background: white;
     }
     th, td {
       border: 1px solid #ccc;
-      padding: 10px;
-      text-align: left;
+      padding: 8px;
+      text-align: center;
     }
     th {
-      background: #009879;
+      background: #007b7f;
       color: white;
     }
-    tfoot td {
-      font-weight: bold;
-      background: #f3f3f3;
+    tr:nth-child(even) {
+      background: #f2f2f2;
     }
-    .acoes button {
-      background-color: #d9534f;
-      margin: 0 5px;
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      background: #007b7f;
+      color: white;
+      transition: 0.2s;
     }
-    .acoes button:hover {
-      background-color: #c9302c;
+    button:hover {
+      background: #005f63;
+    }
+    .total {
+      text-align: right;
+      font-size: 18px;
+      margin-top: 15px;
+      color: #333;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Controle de Compras do Mês 🛒</h1>
+  <h1>🛒 Controle de Compras</h1>
 
-    <label for="produto">Produto:</label>
-    <select id="produto">
+  <div class="form-container">
+    <select id="produtoSelect">
       <option value="">Selecione...</option>
-      <option>Arroz 5kg</option>
-      <option>Feijão 1kg</option>
-      <option>Macarrão 500g</option>
-      <option>Açúcar 1kg</option>
-      <option>Óleo 900ml</option>
-      <option>Leite 1L</option>
     </select>
-
-    <label for="quantidade">Qtd:</label>
-    <input type="number" id="quantidade" min="1" value="1" />
-
-    <label for="valor">Valor (R$):</label>
-    <input type="number" id="valor" min="0" step="0.01" />
-
-    <button onclick="adicionarItem()">Adicionar</button>
-
-    <br><br>
-
-    <label for="novoProduto">Adicionar novo produto:</label>
-    <input type="text" id="novoProduto" placeholder="Ex: Café 500g" />
-    <button onclick="adicionarProduto()">+ Produto</button>
-
-    <table id="tabelaCompras">
-      <thead>
-        <tr>
-          <th>Produto</th>
-          <th>Quantidade</th>
-          <th>Valor Unitário (R$)</th>
-          <th>Total (R$)</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="lista-compras"></tbody>
-      <tfoot>
-        <tr>
-          <td colspan="3">Total Geral</td>
-          <td id="total-geral">0.00</td>
-          <td></td>
-        </tr>
-      </tfoot>
-    </table>
-
-    <br>
-    <button onclick="gerarPDF()">📄 Baixar Relatório em PDF</button>
+    <input type="number" id="quantidade" placeholder="Quantidade" min="1" />
+    <input type="number" id="valor" placeholder="Valor Unitário (R$)" step="0.01" />
+    <button onclick="adicionarProduto()">Adicionar/Atualizar</button>
   </div>
 
-  <!-- Biblioteca jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <div class="form-container">
+    <input type="text" id="novoProduto" placeholder="Novo Produto" />
+    <button onclick="adicionarNovoProduto()">Adicionar Produto à Lista</button>
+  </div>
+
+  <table id="tabela">
+    <thead>
+      <tr>
+        <th>Produto</th>
+        <th>Quantidade</th>
+        <th>Valor Unitário (R$)</th>
+        <th>Total (R$)</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="total" id="totalGeral">Total Geral: R$ 0,00</div>
+  <button style="margin-top:15px;" onclick="gerarPDF()">📄 Baixar Relatório PDF</button>
 
   <script>
-    // ---------- Carregamento inicial ----------
-    window.onload = () => {
-      carregarProdutosLocalStorage();
-      carregarComprasLocalStorage();
-    };
+    let produtos = JSON.parse(localStorage.getItem("produtos")) || [
+      "Arroz 5kg", "Feijão 1kg", "Macarrão 500g", "Açúcar 1kg", "Óleo 900ml", "Leite 1L"
+    ];
+    let compras = JSON.parse(localStorage.getItem("compras")) || [];
 
-    // ---------- Adicionar novo produto ----------
-    function adicionarProduto() {
-      const novoProduto = document.getElementById("novoProduto").value.trim();
-      const select = document.getElementById("produto");
+    const produtoSelect = document.getElementById("produtoSelect");
+    const tabela = document.getElementById("tabela").querySelector("tbody");
 
-      if (novoProduto === "") {
-        alert("Digite o nome do produto!");
-        return;
-      }
-
-      // Verifica duplicados
-      for (let i = 0; i < select.options.length; i++) {
-        if (select.options[i].text.toLowerCase() === novoProduto.toLowerCase()) {
-          alert("Este produto já existe!");
-          return;
-        }
-      }
-
-      const option = document.createElement("option");
-      option.text = novoProduto;
-      select.add(option);
-
-      ordenarProdutos(select);
-      salvarProdutosLocalStorage();
-
-      document.getElementById("novoProduto").value = "";
-      alert(`Produto "${novoProduto}" adicionado!`);
-    }
-
-    function ordenarProdutos(select) {
-      const options = Array.from(select.options).slice(1);
-      options.sort((a, b) => a.text.localeCompare(b.text, "pt-BR"));
-      select.length = 1;
-      options.forEach(opt => select.add(opt));
-    }
-
-    function salvarProdutosLocalStorage() {
-      const produtos = Array.from(document.getElementById("produto").options)
-        .slice(1)
-        .map(o => o.text);
+    function atualizarSelect() {
+      produtos.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      produtoSelect.innerHTML = '<option value="">Selecione...</option>';
+      produtos.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.textContent = p;
+        produtoSelect.appendChild(opt);
+      });
       localStorage.setItem("produtos", JSON.stringify(produtos));
     }
 
-    function carregarProdutosLocalStorage() {
-      const produtos = JSON.parse(localStorage.getItem("produtos")) || [];
-      const select = document.getElementById("produto");
-      produtos.sort((a, b) => a.localeCompare(b, "pt-BR"));
-      produtos.forEach(p => {
-        const opt = document.createElement("option");
-        opt.text = p;
-        select.add(opt);
-      });
+    function adicionarNovoProduto() {
+      const novo = document.getElementById("novoProduto").value.trim();
+      if (!novo) return alert("Digite o nome do novo produto.");
+      if (produtos.includes(novo)) return alert("Esse produto já existe na lista.");
+      produtos.push(novo);
+      document.getElementById("novoProduto").value = "";
+      atualizarSelect();
     }
 
-    // ---------- Adicionar item ----------
-    function adicionarItem() {
-      const produto = document.getElementById("produto").value;
-      const qtd = parseFloat(document.getElementById("quantidade").value);
+    function adicionarProduto() {
+      const nome = produtoSelect.value;
+      const quantidade = parseFloat(document.getElementById("quantidade").value);
       const valor = parseFloat(document.getElementById("valor").value);
 
-      if (!produto || isNaN(qtd) || isNaN(valor)) {
-        alert("Preencha todos os campos corretamente!");
-        return;
+      if (!nome || isNaN(quantidade) || isNaN(valor)) {
+        return alert("Preencha todos os campos corretamente.");
       }
 
-      const lista = document.getElementById("lista-compras");
-      const linha = document.createElement("tr");
+      const existente = compras.find(c => c.nome === nome);
+      if (existente) {
+        existente.quantidade = quantidade;
+        existente.valor = valor;
+        existente.total = quantidade * valor;
+      } else {
+        compras.push({ nome, quantidade, valor, total: quantidade * valor });
+      }
 
-      const total = qtd * valor;
-      linha.innerHTML = `
-        <td contenteditable="true" oninput="salvarComprasLocalStorage()">${produto}</td>
-        <td contenteditable="true" oninput="atualizarTotalLinha(this)">${qtd}</td>
-        <td contenteditable="true" oninput="atualizarTotalLinha(this)">${valor.toFixed(2)}</td>
-        <td>${total.toFixed(2)}</td>
-        <td class="acoes"><button onclick="removerLinha(this)">Remover</button></td>
-      `;
-
-      lista.appendChild(linha);
-      atualizarTotalGeral();
-      salvarComprasLocalStorage();
+      salvarDados();
+      atualizarTabela();
     }
 
-    function atualizarTotalLinha(el) {
-      const linha = el.parentElement;
-      const qtd = parseFloat(linha.children[1].textContent) || 0;
-      const valor = parseFloat(linha.children[2].textContent) || 0;
-      const total = qtd * valor;
-      linha.children[3].textContent = total.toFixed(2);
-      atualizarTotalGeral();
-      salvarComprasLocalStorage();
+    function removerProduto(nome) {
+      compras = compras.filter(c => c.nome !== nome);
+      salvarDados();
+      atualizarTabela();
     }
 
-    function atualizarTotalGeral() {
-      const linhas = document.querySelectorAll("#lista-compras tr");
-      let total = 0;
-      linhas.forEach(l => total += parseFloat(l.children[3].textContent) || 0);
-      document.getElementById("total-geral").textContent = total.toFixed(2);
+    function editarProduto(nome) {
+      const item = compras.find(c => c.nome === nome);
+      produtoSelect.value = item.nome;
+      document.getElementById("quantidade").value = item.quantidade;
+      document.getElementById("valor").value = item.valor;
     }
 
-    function removerLinha(botao) {
-      botao.parentElement.parentElement.remove();
-      atualizarTotalGeral();
-      salvarComprasLocalStorage();
+    function atualizarTabela() {
+      tabela.innerHTML = "";
+      let totalGeral = 0;
+      compras.forEach(c => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${c.nome}</td>
+          <td>${c.quantidade}</td>
+          <td>R$ ${c.valor.toFixed(2)}</td>
+          <td>R$ ${(c.total).toFixed(2)}</td>
+          <td>
+            <button onclick="editarProduto('${c.nome}')">✏️ Editar</button>
+            <button onclick="removerProduto('${c.nome}')">🗑️ Excluir</button>
+          </td>
+        `;
+        tabela.appendChild(row);
+        totalGeral += c.total;
+      });
+      document.getElementById("totalGeral").textContent = `Total Geral: R$ ${totalGeral.toFixed(2)}`;
     }
 
-    // ---------- Local Storage ----------
-    function salvarComprasLocalStorage() {
-      const linhas = document.querySelectorAll("#lista-compras tr");
-      const compras = Array.from(linhas).map(l => ({
-        produto: l.children[0].textContent,
-        qtd: l.children[1].textContent,
-        valor: l.children[2].textContent
-      }));
+    function salvarDados() {
       localStorage.setItem("compras", JSON.stringify(compras));
     }
 
-    function carregarComprasLocalStorage() {
-      const compras = JSON.parse(localStorage.getItem("compras")) || [];
-      const lista = document.getElementById("lista-compras");
-      compras.forEach(item => {
-        const linha = document.createElement("tr");
-        const total = parseFloat(item.qtd) * parseFloat(item.valor);
-        linha.innerHTML = `
-          <td contenteditable="true" oninput="salvarComprasLocalStorage()">${item.produto}</td>
-          <td contenteditable="true" oninput="atualizarTotalLinha(this)">${item.qtd}</td>
-          <td contenteditable="true" oninput="atualizarTotalLinha(this)">${item.valor}</td>
-          <td>${total.toFixed(2)}</td>
-          <td class="acoes"><button onclick="removerLinha(this)">Remover</button></td>
-        `;
-        lista.appendChild(linha);
-      });
-      atualizarTotalGeral();
-    }
-
-    // ---------- Gerar PDF ----------
-    async function gerarPDF() {
+    function gerarPDF() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-
-      doc.setFontSize(14);
-      doc.text("Relatório de Compras do Mês", 10, 10);
-
-      const linhas = document.querySelectorAll("#lista-compras tr");
-      let y = 25;
-      doc.text("Produto", 10, 20);
-      doc.text("Qtd", 80, 20);
-      doc.text("Valor (R$)", 110, 20);
-      doc.text("Total (R$)", 150, 20);
-
-      linhas.forEach(linha => {
-        const produto = linha.children[0].textContent;
-        const qtd = linha.children[1].textContent;
-        const valor = linha.children[2].textContent;
-        const total = linha.children[3].textContent;
-
-        doc.text(produto, 10, y);
-        doc.text(qtd, 80, y);
-        doc.text(valor, 110, y);
-        doc.text(total, 150, y);
+      doc.text("Relatório de Compras", 10, 10);
+      let y = 20;
+      compras.forEach(c => {
+        doc.text(`${c.nome} - Qtde: ${c.quantidade} - Unit: R$${c.valor.toFixed(2)} - Total: R$${c.total.toFixed(2)}`, 10, y);
         y += 8;
       });
-
-      doc.text(`Total Geral: R$ ${document.getElementById("total-geral").textContent}`, 10, y + 10);
-
+      doc.text(document.getElementById("totalGeral").textContent, 10, y + 10);
       doc.save("relatorio_compras.pdf");
     }
+
+    atualizarSelect();
+    atualizarTabela();
   </script>
 </body>
 </html>
