@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minhas Compras do Mês</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background: #009879;
+      color: white;
+    }
+    tfoot td {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Controle de Compras do Mês 🛒</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Produto</th>
+        <th>Quantidade</th>
+        <th>Preço Unitário (R$)</th>
+        <th>Total (R$)</th>
+      </tr>
+    </thead>
+    <tbody id="lista-compras">
+      <tr>
+        <td>Arroz 5kg</td>
+        <td>2</td>
+        <td>25.00</td>
+        <td>50.00</td>
+      </tr>
+      <tr>
+        <td>Feijão 1kg</td>
+        <td>4</td>
+        <td>7.50</td>
+        <td>30.00</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3">Total Geral</td>
+        <td id="total-geral"></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <script>
+    function atualizarTotal() {
+      const linhas = document.querySelectorAll("#lista-compras tr");
+      let total = 0;
+      linhas.forEach(linha => {
+        total += parseFloat(linha.children[3].textContent);
+      });
+      document.getElementById("total-geral").textContent = total.toFixed(2);
+    }
+    atualizarTotal();
+  </script>
+</body>
+</html>
