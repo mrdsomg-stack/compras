@@ -76,17 +76,11 @@
   <div class="container">
     <h1>Controle de Compras do Mês 🛒</h1>
 
-    <!-- Formulário de produtos -->
+    <!-- Formulário -->
     <div>
       <label for="produto">Produto:</label>
       <select id="produto">
         <option value="">Selecione...</option>
-        <option>Arroz 5kg</option>
-        <option>Feijão 1kg</option>
-        <option>Macarrão 500g</option>
-        <option>Açúcar 1kg</option>
-        <option>Óleo 900ml</option>
-        <option>Leite 1L</option>
       </select>
 
       <label for="quantidade">Quantidade:</label>
@@ -131,28 +125,47 @@
   <script>
     const lista = document.getElementById("lista");
     const totalGeralEl = document.getElementById("totalGeral");
+    const selectProduto = document.getElementById("produto");
 
-    // === ADICIONAR PRODUTO NA LISTA DE OPÇÕES ===
+    // === Inicializar Produtos Padrão ===
+    const produtosPadrao = ["Arroz 5kg", "Feijão 1kg", "Macarrão 500g", "Açúcar 1kg", "Óleo 900ml", "Leite 1L"];
+
+    // === Carregar Produtos Salvos ou Padrão ===
+    function carregarProdutos() {
+      const produtosSalvos = JSON.parse(localStorage.getItem("produtos")) || produtosPadrao;
+      selectProduto.innerHTML = '<option value="">Selecione...</option>';
+      produtosSalvos.forEach(p => {
+        const opt = document.createElement("option");
+        opt.text = p;
+        selectProduto.add(opt);
+      });
+    }
+
+    // === Salvar Produtos ===
+    function salvarProdutos() {
+      const opcoes = Array.from(selectProduto.options).map(o => o.text).filter(o => o !== "Selecione...");
+      localStorage.setItem("produtos", JSON.stringify(opcoes));
+    }
+
+    // === Adicionar Novo Produto ===
     function adicionarProduto() {
       const novoProduto = document.getElementById("novoProduto").value.trim();
-      const select = document.getElementById("produto");
-
       if (!novoProduto) {
         alert("Digite o nome do produto!");
         return;
       }
 
-      const option = document.createElement("option");
-      option.text = novoProduto;
-      select.add(option);
+      const opt = document.createElement("option");
+      opt.text = novoProduto;
+      selectProduto.add(opt);
+      salvarProdutos();
       document.getElementById("novoProduto").value = "";
-
       alert(`Produto "${novoProduto}" adicionado à lista!`);
     }
 
-    // === ADICIONAR ITEM NA TABELA ===
+    // === Adicionar Item à Tabela ===
     function adicionarItem() {
-      const produto = document.getElementById("produto").value;
+      const produto = selectProduto.value;
       const quantidade = parseFloat(document.getElementById("quantidade").value);
       const valor = parseFloat(document.getElementById("valor").value);
 
@@ -165,20 +178,19 @@
       const linha = document.createElement("tr");
 
       linha.innerHTML = `
-        <td contenteditable="true" oninput="atualizarTotalLinha(this)">${produto}</td>
+        <td contenteditable="true" oninput="salvarTabela()">${produto}</td>
         <td contenteditable="true" oninput="atualizarTotalLinha(this)">${quantidade}</td>
         <td contenteditable="true" oninput="atualizarTotalLinha(this)">${valor.toFixed(2)}</td>
         <td>${total.toFixed(2)}</td>
-        <td class="actions">
-          <button onclick="removerItem(this)">🗑️</button>
-        </td>
+        <td><button onclick="removerItem(this)">🗑️</button></td>
       `;
 
       lista.appendChild(linha);
       atualizarTotalGeral();
+      salvarTabela();
     }
 
-    // === ATUALIZAR LINHA (EDIÇÃO DIRETA) ===
+    // === Atualizar Totais ===
     function atualizarTotalLinha(el) {
       const linha = el.parentElement;
       const qtd = parseFloat(linha.children[1].textContent) || 0;
@@ -186,15 +198,9 @@
       const total = qtd * valor;
       linha.children[3].textContent = total.toFixed(2);
       atualizarTotalGeral();
+      salvarTabela();
     }
 
-    // === REMOVER ITEM ===
-    function removerItem(botao) {
-      botao.parentElement.parentElement.remove();
-      atualizarTotalGeral();
-    }
-
-    // === ATUALIZAR TOTAL GERAL ===
     function atualizarTotalGeral() {
       let total = 0;
       document.querySelectorAll("#lista tr").forEach(linha => {
@@ -203,7 +209,44 @@
       totalGeralEl.textContent = total.toFixed(2);
     }
 
-    // === GERAR PDF ===
+    // === Remover Item ===
+    function removerItem(botao) {
+      botao.parentElement.parentElement.remove();
+      atualizarTotalGeral();
+      salvarTabela();
+    }
+
+    // === Salvar e Carregar Tabela ===
+    function salvarTabela() {
+      const itens = [];
+      document.querySelectorAll("#lista tr").forEach(linha => {
+        itens.push({
+          produto: linha.children[0].textContent,
+          quantidade: linha.children[1].textContent,
+          valor: linha.children[2].textContent,
+          total: linha.children[3].textContent
+        });
+      });
+      localStorage.setItem("compras", JSON.stringify(itens));
+    }
+
+    function carregarTabela() {
+      const itens = JSON.parse(localStorage.getItem("compras")) || [];
+      itens.forEach(item => {
+        const linha = document.createElement("tr");
+        linha.innerHTML = `
+          <td contenteditable="true" oninput="salvarTabela()">${item.produto}</td>
+          <td contenteditable="true" oninput="atualizarTotalLinha(this)">${item.quantidade}</td>
+          <td contenteditable="true" oninput="atualizarTotalLinha(this)">${item.valor}</td>
+          <td>${item.total}</td>
+          <td><button onclick="removerItem(this)">🗑️</button></td>
+        `;
+        lista.appendChild(linha);
+      });
+      atualizarTotalGeral();
+    }
+
+    // === Gerar PDF ===
     async function gerarPDF() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
@@ -217,15 +260,10 @@
       doc.text("Qtd", 90, y);
       doc.text("Valor (R$)", 120, y);
       doc.text("Total (R$)", 160, y);
-
       y += 10;
 
       document.querySelectorAll("#lista tr").forEach(linha => {
-        const produto = linha.children[0].textContent;
-        const qtd = linha.children[1].textContent;
-        const valor = linha.children[2].textContent;
-        const total = linha.children[3].textContent;
-
+        const [produto, qtd, valor, total] = Array.from(linha.children).map(td => td.textContent);
         doc.text(produto, 20, y);
         doc.text(qtd, 95, y);
         doc.text(valor, 125, y);
@@ -238,6 +276,12 @@
       doc.text(`Total Geral: R$ ${totalGeralEl.textContent}`, 20, y);
 
       doc.save("relatorio-compras.pdf");
+    }
+
+    // === Inicializar Página ===
+    window.onload = function() {
+      carregarProdutos();
+      carregarTabela();
     }
   </script>
 </body>
