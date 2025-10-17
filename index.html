@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Compras do Mês 🛒</title>
+  <title>Controle de Compras do Mês 🛒</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -11,18 +12,35 @@
       margin: 0;
       padding: 20px;
     }
-    h1 {
-      text-align: center;
-      color: #333;
-    }
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: auto;
       background: white;
-      padding: 20px;
+      padding: 25px;
       border-radius: 10px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    select, input, button {
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    button {
+      background: #009879;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover { background: #007f67; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -37,26 +55,20 @@
       background: #009879;
       color: white;
     }
-    select, input {
-      padding: 5px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    button {
-      margin-top: 10px;
-      background: #009879;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #007f67;
-    }
     tfoot td {
       font-weight: bold;
       background: #e9f5f2;
+    }
+    .actions button {
+      margin: 0 2px;
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+    .btn-pdf {
+      background: #e03e3e;
+    }
+    .btn-pdf:hover {
+      background: #b82e2e;
     }
   </style>
 </head>
@@ -64,6 +76,7 @@
   <div class="container">
     <h1>Controle de Compras do Mês 🛒</h1>
 
+    <!-- Formulário de produtos -->
     <div>
       <label for="produto">Produto:</label>
       <select id="produto">
@@ -82,9 +95,16 @@
       <label for="valor">Valor Unitário (R$):</label>
       <input type="number" id="valor" step="0.01" min="0" value="0">
 
-      <button onclick="adicionarItem()">Adicionar</button>
+      <button onclick="adicionarItem()">Adicionar Produto</button>
+
+      <hr style="margin: 20px 0;">
+
+      <label for="novoProduto">Cadastrar novo produto:</label>
+      <input type="text" id="novoProduto" placeholder="Digite o nome do novo produto">
+      <button onclick="adicionarProduto()">+ Adicionar à lista</button>
     </div>
 
+    <!-- Tabela -->
     <table id="tabela">
       <thead>
         <tr>
@@ -104,12 +124,33 @@
         </tr>
       </tfoot>
     </table>
+
+    <button class="btn-pdf" onclick="gerarPDF()">📄 Baixar Relatório em PDF</button>
   </div>
 
   <script>
     const lista = document.getElementById("lista");
     const totalGeralEl = document.getElementById("totalGeral");
 
+    // === ADICIONAR PRODUTO NA LISTA DE OPÇÕES ===
+    function adicionarProduto() {
+      const novoProduto = document.getElementById("novoProduto").value.trim();
+      const select = document.getElementById("produto");
+
+      if (!novoProduto) {
+        alert("Digite o nome do produto!");
+        return;
+      }
+
+      const option = document.createElement("option");
+      option.text = novoProduto;
+      select.add(option);
+      document.getElementById("novoProduto").value = "";
+
+      alert(`Produto "${novoProduto}" adicionado à lista!`);
+    }
+
+    // === ADICIONAR ITEM NA TABELA ===
     function adicionarItem() {
       const produto = document.getElementById("produto").value;
       const quantidade = parseFloat(document.getElementById("quantidade").value);
@@ -124,16 +165,20 @@
       const linha = document.createElement("tr");
 
       linha.innerHTML = `
-        <td>${produto}</td>
+        <td contenteditable="true" oninput="atualizarTotalLinha(this)">${produto}</td>
         <td contenteditable="true" oninput="atualizarTotalLinha(this)">${quantidade}</td>
         <td contenteditable="true" oninput="atualizarTotalLinha(this)">${valor.toFixed(2)}</td>
         <td>${total.toFixed(2)}</td>
-        <td><button onclick="removerItem(this)">🗑️</button></td>
+        <td class="actions">
+          <button onclick="removerItem(this)">🗑️</button>
+        </td>
       `;
+
       lista.appendChild(linha);
       atualizarTotalGeral();
     }
 
+    // === ATUALIZAR LINHA (EDIÇÃO DIRETA) ===
     function atualizarTotalLinha(el) {
       const linha = el.parentElement;
       const qtd = parseFloat(linha.children[1].textContent) || 0;
@@ -143,17 +188,56 @@
       atualizarTotalGeral();
     }
 
+    // === REMOVER ITEM ===
     function removerItem(botao) {
       botao.parentElement.parentElement.remove();
       atualizarTotalGeral();
     }
 
+    // === ATUALIZAR TOTAL GERAL ===
     function atualizarTotalGeral() {
       let total = 0;
       document.querySelectorAll("#lista tr").forEach(linha => {
         total += parseFloat(linha.children[3].textContent) || 0;
       });
       totalGeralEl.textContent = total.toFixed(2);
+    }
+
+    // === GERAR PDF ===
+    async function gerarPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text("Relatório de Compras do Mês", 20, 20);
+      doc.setFontSize(12);
+
+      let y = 35;
+      doc.text("Produto", 20, y);
+      doc.text("Qtd", 90, y);
+      doc.text("Valor (R$)", 120, y);
+      doc.text("Total (R$)", 160, y);
+
+      y += 10;
+
+      document.querySelectorAll("#lista tr").forEach(linha => {
+        const produto = linha.children[0].textContent;
+        const qtd = linha.children[1].textContent;
+        const valor = linha.children[2].textContent;
+        const total = linha.children[3].textContent;
+
+        doc.text(produto, 20, y);
+        doc.text(qtd, 95, y);
+        doc.text(valor, 125, y);
+        doc.text(total, 165, y);
+        y += 8;
+      });
+
+      y += 5;
+      doc.setFontSize(14);
+      doc.text(`Total Geral: R$ ${totalGeralEl.textContent}`, 20, y);
+
+      doc.save("relatorio-compras.pdf");
     }
   </script>
 </body>
